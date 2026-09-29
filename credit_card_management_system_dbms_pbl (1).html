@@ -1,0 +1,1555 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexusCredit - DBMS PBL Credit Card Management System</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81',
+                        },
+                        darkbg: '#080c14',
+                        darkcard: '#0f172a',
+                        darkborder: '#1e293b'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: #080c14;
+            color: #f1f5f9;
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .card-grad-platinum {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 50%, #1e1b4b 100%);
+        }
+        .card-grad-gold {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #451a03 100%);
+        }
+        .card-grad-black {
+            background: linear-gradient(135deg, #334155 0%, #0f172a 50%, #000000 100%);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        /* Toast notification positioning */
+        #toastContainer {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-darkbg text-slate-100 overflow-x-hidden">
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="flex flex-col gap-2 max-w-sm w-full pointer-events-none"></div>
+
+    <!-- Top Navigation Bar -->
+    <header id="mainHeader" class="sticky top-0 z-40 bg-darkcard/90 backdrop-blur-md border-b border-darkborder px-4 py-3 hidden">
+        <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2.5 bg-brand-600 rounded-xl text-white shadow-lg shadow-brand-500/30">
+                    <i class="fa-solid fa-credit-card text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight tracking-wide bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+                        NexusCredit <span class="text-[10px] px-2 py-0.5 rounded bg-brand-500/20 text-brand-400 border border-brand-500/30 font-semibold ml-1">DBMS PBL Project</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Database-Driven Financial Platform</p>
+                </div>
+            </div>
+
+            <!-- Active User / Role Badge & Auth Actions -->
+            <div class="flex items-center gap-3">
+                <!-- DBMS Inspector Alert Trigger -->
+                <button onclick="switchTab('dbviewer')" class="bg-amber-500/10 border border-amber-500/30 text-amber-400 px-3 py-1.5 rounded-lg text-xs flex items-center gap-2 hover:bg-amber-500/20 transition">
+                    <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                    <span class="font-mono font-bold"><i class="fa-solid fa-database mr-1"></i> Live DBMS Inspector</span>
+                </button>
+
+                <div class="flex items-center gap-2 bg-darkbg px-3 py-1.5 rounded-xl border border-darkborder">
+                    <div class="w-7 h-7 rounded-full bg-brand-600 flex items-center justify-center text-xs font-bold text-white" id="headerUserAvatar">U</div>
+                    <div class="text-left leading-tight hidden sm:block">
+                        <p class="text-xs font-semibold text-slate-200" id="headerUserName">User</p>
+                        <p class="text-[10px] text-brand-400 font-mono" id="headerUserRole">ROLE: USER</p>
+                    </div>
+                </div>
+
+                <button onclick="logout()" class="text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 px-3 py-2 rounded-xl border border-red-500/20 transition flex items-center gap-1.5 font-medium">
+                    <i class="fa-solid fa-right-from-bracket"></i> <span class="hidden sm:inline">Logout</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Bar for Authenticated Users -->
+    <nav id="mainNav" class="bg-darkcard/50 border-b border-darkborder px-4 py-2 sticky top-[61px] z-30 backdrop-blur-md hidden">
+        <div class="max-w-7xl mx-auto flex items-center gap-1 overflow-x-auto text-xs font-medium no-scrollbar" id="navTabsContainer">
+            <!-- Nav buttons dynamically modified based on user role -->
+        </div>
+    </nav>
+
+    <!-- MAIN CONTAINER -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
+
+        <!-- 1. AUTHENTICATION GATEWAY SECTION -->
+        <section id="view-auth" class="min-h-[80vh] flex flex-col justify-center items-center py-6">
+            <div class="max-w-md w-full glass-panel p-6 sm:p-8 rounded-3xl border border-darkborder shadow-2xl space-y-6">
+                <!-- Auth Header -->
+                <div class="text-center space-y-2">
+                    <div class="inline-flex p-3 bg-brand-600/20 border border-brand-500/30 rounded-2xl text-brand-400 mb-1">
+                        <i class="fa-solid fa-building-columns text-3xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold tracking-tight text-white">NexusCredit DBMS</h2>
+                    <p class="text-xs text-slate-400">Credit Card Management System • PBL Academic Demo</p>
+                </div>
+
+                <!-- Gateway Selector Tabs -->
+                <div class="bg-darkbg p-1 rounded-xl border border-darkborder grid grid-cols-3 gap-1 text-xs font-semibold">
+                    <button id="authTabUser" onclick="switchAuthMode('USER_LOGIN')" class="py-2 rounded-lg transition text-white bg-brand-600 shadow">
+                        User Gateway
+                    </button>
+                    <button id="authTabAdmin" onclick="switchAuthMode('ADMIN_LOGIN')" class="py-2 rounded-lg transition text-slate-400 hover:text-white">
+                        Admin Gateway
+                    </button>
+                    <button id="authTabRegister" onclick="switchAuthMode('REGISTER')" class="py-2 rounded-lg transition text-slate-400 hover:text-white">
+                        Register
+                    </button>
+                </div>
+
+                <!-- User Login Form -->
+                <form id="formUserLogin" onsubmit="handleAuthSubmit(event, 'USER_LOGIN')" class="space-y-4">
+                    <div class="space-y-1">
+                        <label class="text-xs font-medium text-slate-400">Email Address / User ID</label>
+                        <div class="relative">
+                            <i class="fa-solid fa-envelope absolute left-3 top-3 text-xs text-slate-500"></i>
+                            <input type="email" id="loginUserEmail" value="alex.vance@nexus.com" required class="w-full bg-darkbg border border-darkborder rounded-xl pl-9 pr-3 py-2.5 text-xs text-white focus:border-brand-500 outline-none">
+                        </div>
+                    </div>
+                    <div class="space-y-1">
+                        <div class="flex justify-between items-center">
+                            <label class="text-xs font-medium text-slate-400">Password</label>
+                            <a href="#" onclick="showPasswordResetModal()" class="text-[11px] text-brand-400 hover:underline">Forgot?</a>
+                        </div>
+                        <div class="relative">
+                            <i class="fa-solid fa-key absolute left-3 top-3 text-xs text-slate-500"></i>
+                            <input type="password" id="loginUserPass" value="user123" required class="w-full bg-darkbg border border-darkborder rounded-xl pl-9 pr-3 py-2.5 text-xs text-white focus:border-brand-500 outline-none">
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full bg-brand-600 hover:bg-brand-500 text-white font-bold py-3 rounded-xl text-xs transition shadow-lg shadow-brand-600/30">
+                        Login to User Dashboard &rarr;
+                    </button>
+                    <div class="p-3 bg-brand-500/10 border border-brand-500/20 rounded-xl text-[11px] text-slate-300">
+                        <span class="font-bold text-brand-400">Demo User Credentials:</span> alex.vance@nexus.com / user123
+                    </div>
+                </form>
+
+                <!-- Admin Login Form -->
+                <form id="formAdminLogin" onsubmit="handleAuthSubmit(event, 'ADMIN_LOGIN')" class="space-y-4 hidden">
+                    <div class="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl text-[11px] text-amber-300 font-medium">
+                        <i class="fa-solid fa-shield-halved mr-1"></i> Elevated Access: System Admin Console
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-xs font-medium text-slate-400">Admin Email ID</label>
+                        <div class="relative">
+                            <i class="fa-solid fa-user-shield absolute left-3 top-3 text-xs text-slate-500"></i>
+                            <input type="email" id="loginAdminEmail" value="admin@nexus.com" required class="w-full bg-darkbg border border-darkborder rounded-xl pl-9 pr-3 py-2.5 text-xs text-white focus:border-amber-500 outline-none">
+                        </div>
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-xs font-medium text-slate-400">Security Key / Password</label>
+                        <div class="relative">
+                            <i class="fa-solid fa-lock absolute left-3 top-3 text-xs text-slate-500"></i>
+                            <input type="password" id="loginAdminPass" value="admin123" required class="w-full bg-darkbg border border-darkborder rounded-xl pl-9 pr-3 py-2.5 text-xs text-white focus:border-amber-500 outline-none">
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold py-3 rounded-xl text-xs transition shadow-lg shadow-amber-600/20">
+                        Authenticate Admin Gateway &rarr;
+                    </button>
+                    <div class="p-3 bg-darkbg border border-darkborder rounded-xl text-[11px] text-slate-400">
+                        <span class="font-bold text-amber-400">Demo Admin:</span> admin@nexus.com / admin123
+                    </div>
+                </form>
+
+                <!-- User Registration Form -->
+                <form id="formRegister" onsubmit="handleAuthSubmit(event, 'REGISTER')" class="space-y-3 hidden text-xs">
+                    <div>
+                        <label class="block font-medium text-slate-400 mb-1">Full Legal Name</label>
+                        <input type="text" id="regFullName" placeholder="e.g. Rahul Sharma" required class="w-full bg-darkbg border border-darkborder rounded-xl p-2.5 text-white focus:border-brand-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-medium text-slate-400 mb-1">Email Address</label>
+                        <input type="email" id="regEmail" placeholder="rahul@domain.com" required class="w-full bg-darkbg border border-darkborder rounded-xl p-2.5 text-white focus:border-brand-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-medium text-slate-400 mb-1">Create Password</label>
+                        <input type="password" id="regPassword" placeholder="••••••••" required class="w-full bg-darkbg border border-darkborder rounded-xl p-2.5 text-white focus:border-brand-500 outline-none">
+                    </div>
+                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-emerald-600/30">
+                        Create DBMS User Account (INSERT)
+                    </button>
+                </form>
+
+                <!-- Quick Visual Database Jump for Evaluation -->
+                <div class="pt-4 border-t border-darkborder text-center">
+                    <button onclick="guestQuickInspect()" class="text-xs text-slate-400 hover:text-amber-400 transition font-mono flex items-center justify-center gap-2 mx-auto">
+                        <i class="fa-solid fa-eye"></i> Faculty Quick-View Raw DBMS Tables &rarr;
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. USER DASHBOARD VIEW -->
+        <section id="view-dashboard" class="tab-view hidden space-y-6">
+            <!-- Key Metric Overview Bar -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div class="glass-panel p-4 rounded-2xl border border-darkborder">
+                    <p class="text-xs text-slate-400 font-medium">Total Balance Due</p>
+                    <h3 class="text-2xl font-bold mt-1 text-white" id="dashTotalOutstanding">$1,450.00</h3>
+                    <p class="text-[11px] text-amber-400 mt-2 font-medium"><i class="fa-solid fa-clock mr-1"></i> Due Oct 12, 2026</p>
+                </div>
+
+                <div class="glass-panel p-4 rounded-2xl border border-darkborder">
+                    <p class="text-xs text-slate-400 font-medium">Available Credit</p>
+                    <h3 class="text-2xl font-bold mt-1 text-emerald-400" id="dashAvailableCredit">$8,550.00</h3>
+                    <div class="w-full bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
+                        <div id="dashUtilBar" class="bg-emerald-500 h-full rounded-full transition-all duration-500" style="width: 14.5%"></div>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-4 rounded-2xl border border-darkborder">
+                    <p class="text-xs text-slate-400 font-medium">Total Credit Limit</p>
+                    <h3 class="text-2xl font-bold mt-1 text-white" id="dashTotalLimit">$10,000.00</h3>
+                    <p class="text-[11px] text-slate-500 mt-2">Across Active Cards</p>
+                </div>
+
+                <div class="glass-panel p-4 rounded-2xl border border-darkborder">
+                    <p class="text-xs text-slate-400 font-medium">Reward Points</p>
+                    <h3 class="text-2xl font-bold mt-1 text-amber-400" id="dashRewardPoints">3,850 PTS</h3>
+                    <button onclick="switchTab('rewards')" class="text-[11px] text-brand-400 hover:underline mt-2 inline-block">Redeem Rewards &rarr;</button>
+                </div>
+
+                <div class="glass-panel p-4 rounded-2xl border border-darkborder">
+                    <p class="text-xs text-slate-400 font-medium">Security & Fraud Radar</p>
+                    <h3 class="text-lg font-bold mt-1 text-emerald-400 flex items-center gap-1.5">
+                        <i class="fa-solid fa-shield-check"></i> Protected
+                    </h3>
+                    <p class="text-[11px] text-slate-400 mt-2">2FA Active • Real-time Monitoring</p>
+                </div>
+            </div>
+
+            <!-- Virtual Card Visual & Analytics Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Virtual Credit Card Graphic -->
+                <div class="glass-panel p-6 rounded-2xl border border-darkborder flex flex-col justify-between">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="font-semibold text-slate-200 text-sm">Primary Card</h2>
+                        <span class="px-2.5 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" id="dashCardStatus">ACTIVE</span>
+                    </div>
+
+                    <!-- CSS Card Asset -->
+                    <div id="dashCardVisual" class="card-grad-platinum rounded-2xl p-6 text-white shadow-2xl relative overflow-hidden group min-h-[190px] flex flex-col justify-between">
+                        <div class="flex justify-between items-start">
+                            <span class="font-bold tracking-widest text-xs uppercase opacity-90" id="dashCardType">NEXUS PLATINUM</span>
+                            <i class="fa-brands fa-cc-visa text-3xl opacity-90"></i>
+                        </div>
+                        <div class="my-3">
+                            <div class="w-9 h-6 bg-amber-300/80 rounded-md mb-2 flex items-center justify-center text-[7px] font-mono font-bold text-slate-900">CHIP</div>
+                            <p class="font-mono text-lg tracking-widest" id="dashCardNumber">4532 **** **** 4829</p>
+                        </div>
+                        <div class="flex justify-between text-[10px] uppercase tracking-wider text-slate-200">
+                            <div>
+                                <p class="opacity-75 text-[8px]">Card Holder</p>
+                                <p class="font-bold" id="dashCardHolder">ALEXANDER R. VANCE</p>
+                            </div>
+                            <div>
+                                <p class="opacity-75 text-[8px]">Expires</p>
+                                <p class="font-bold font-mono" id="dashCardExp">08/28</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-5 flex items-center gap-2">
+                        <button onclick="openPaymentGateway(145)" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-lg shadow-emerald-600/20">
+                            <i class="fa-solid fa-bolt mr-1"></i> Quick Pay Min ($145)
+                        </button>
+                        <button onclick="openNewTxnModal()" class="flex-1 bg-brand-600 hover:bg-brand-500 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-lg shadow-brand-600/20">
+                            <i class="fa-solid fa-cart-shopping mr-1"></i> Simulate Txn
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Expense Analytics Doughnut Chart -->
+                <div class="lg:col-span-2 glass-panel p-6 rounded-2xl border border-darkborder flex flex-col justify-between">
+                    <div class="flex justify-between items-center mb-2">
+                        <div>
+                            <h2 class="font-semibold text-slate-200 text-sm">Expense Analysis (Current Cycle)</h2>
+                            <p class="text-[11px] text-slate-400">Dynamic aggregation computed from DBMS `Transactions` table</p>
+                        </div>
+                        <span class="text-[10px] font-mono text-brand-400 bg-brand-500/10 border border-brand-500/20 px-2 py-0.5 rounded">
+                            SQL GROUP BY Category
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+                        <div class="h-44 flex justify-center">
+                            <canvas id="expenseChart"></canvas>
+                        </div>
+                        <!-- Smart AI Insights Box -->
+                        <div class="space-y-2.5">
+                            <div class="p-3 bg-brand-500/10 border border-brand-500/20 rounded-xl">
+                                <div class="flex items-center gap-2 text-brand-400 font-bold text-xs mb-1">
+                                    <i class="fa-solid fa-wand-magic-sparkles"></i> AI Spending Insight
+                                </div>
+                                <p class="text-xs text-slate-300">Dining accounts for 22% of budget. You earned +180 bonus points on dining purchases!</p>
+                            </div>
+                            <div class="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                                <div class="flex items-center gap-2 text-amber-400 font-bold text-xs mb-1">
+                                    <i class="fa-solid fa-shield-cat"></i> Anomaly Radar
+                                </div>
+                                <p class="text-xs text-slate-300">Single highest expenditure: $542.50 at Foreign FX Online.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activity Table Preview -->
+            <div class="glass-panel p-6 rounded-2xl border border-darkborder space-y-4">
+                <div class="flex justify-between items-center">
+                    <h2 class="font-semibold text-slate-200 text-sm">Recent Card Transactions</h2>
+                    <button onclick="switchTab('transactions')" class="text-xs text-brand-400 hover:underline">View All SQL Records &rarr;</button>
+                </div>
+                <div class="overflow-x-auto rounded-xl border border-darkborder">
+                    <table class="w-full text-left text-xs">
+                        <thead class="text-slate-400 border-b border-darkborder bg-darkbg">
+                            <tr>
+                                <th class="p-3">TXN_ID (PK)</th>
+                                <th class="p-3">Date</th>
+                                <th class="p-3">Merchant</th>
+                                <th class="p-3">Category</th>
+                                <th class="p-3">Risk Status</th>
+                                <th class="p-3 text-right">Amount ($)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dashTxnTable" class="divide-y divide-darkborder text-slate-300">
+                            <!-- Injected dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. CREDIT CARD MANAGER VIEW -->
+        <section id="view-cards" class="tab-view hidden space-y-6">
+            <div class="flex justify-between items-center flex-wrap gap-3">
+                <div>
+                    <h2 class="text-xl font-bold text-white">Credit Card Management</h2>
+                    <p class="text-xs text-slate-400">View cards, toggle status, change PINs, or request limit adjustments.</p>
+                </div>
+                <button onclick="openAddCardModal()" class="bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-2 shadow-lg shadow-brand-600/30">
+                    <i class="fa-solid fa-plus"></i> Apply / Issue New Card
+                </button>
+            </div>
+
+            <div id="cardsListContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Dynamically generated card list -->
+            </div>
+
+            <!-- Limit Increase Application Form -->
+            <div class="glass-panel p-6 rounded-2xl border border-darkborder max-w-2xl">
+                <h3 class="font-bold text-base mb-1 text-brand-400 flex items-center gap-2">
+                    <i class="fa-solid fa-arrow-up-right-dots"></i> Request Credit Limit Increase
+                </h3>
+                <p class="text-xs text-slate-400 mb-4">Inserts request record into `LimitRequests` table for Admin review.</p>
+                
+                <form onsubmit="handleLimitRequest(event)" class="space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Select Credit Card</label>
+                            <select id="limitCardSelect" class="w-full bg-darkbg border border-darkborder rounded-xl p-2.5 text-xs text-white focus:border-brand-500 outline-none">
+                                <!-- Dynamic -->
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Requested Limit ($)</label>
+                            <input type="number" id="requestedLimitInput" placeholder="e.g. 12000" min="1000" step="500" required class="w-full bg-darkbg border border-darkborder rounded-xl p-2.5 text-xs text-white focus:border-brand-500 outline-none">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Reason for Adjustment</label>
+                        <input type="text" id="limitReasonInput" placeholder="e.g. Salary hike, upcoming travel expenses" required class="w-full bg-darkbg border border-darkborder rounded-xl p-2.5 text-xs text-white focus:border-brand-500 outline-none">
+                    </div>
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition shadow-lg shadow-emerald-600/20">
+                        Submit Limit Increase Request
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- 4. TRANSACTIONS VIEW -->
+        <section id="view-transactions" class="tab-view hidden space-y-6">
+            <div class="glass-panel p-6 rounded-2xl border border-darkborder space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-white">Transactions & Expense Ledger</h2>
+                        <p class="text-xs text-slate-400">Search, filter, and monitor all records in the `Transactions` database table.</p>
+                    </div>
+                    <button onclick="openNewTxnModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-2 shadow-lg shadow-emerald-600/20">
+                        <i class="fa-solid fa-cart-shopping"></i> Simulate Purchase Txn
+                    </button>
+                </div>
+
+                <!-- Filters -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-xs text-slate-500"></i>
+                        <input type="text" id="txnSearchInput" oninput="renderTransactionsTable()" placeholder="Search merchant name..." class="w-full bg-darkbg border border-darkborder rounded-xl pl-9 pr-3 py-2 text-xs text-white focus:border-brand-500 outline-none">
+                    </div>
+                    <div>
+                        <select id="txnCategoryFilter" onchange="renderTransactionsTable()" class="w-full bg-darkbg border border-darkborder rounded-xl px-3 py-2 text-xs text-white focus:border-brand-500 outline-none">
+                            <option value="ALL">All Categories</option>
+                            <option value="Electronics">Electronics</option>
+                            <option value="Dining">Dining</option>
+                            <option value="Groceries">Groceries</option>
+                            <option value="Travel">Travel</option>
+                            <option value="Utilities">Utilities</option>
+                        </select>
+                    </div>
+                    <div>
+                        <select id="txnCardFilter" onchange="renderTransactionsTable()" class="w-full bg-darkbg border border-darkborder rounded-xl px-3 py-2 text-xs text-white focus:border-brand-500 outline-none">
+                            <option value="ALL">All Associated Cards</option>
+                            <option value="1">Visa Platinum (...4829)</option>
+                            <option value="2">Mastercard Gold (...9102)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <div class="overflow-x-auto rounded-xl border border-darkborder">
+                    <table class="w-full text-left text-xs">
+                        <thead class="text-slate-400 border-b border-darkborder bg-darkbg">
+                            <tr>
+                                <th class="p-3">TXN_ID (PK)</th>
+                                <th class="p-3">Card FK</th>
+                                <th class="p-3">Date & Time</th>
+                                <th class="p-3">Merchant</th>
+                                <th class="p-3">Category</th>
+                                <th class="p-3">Risk Radar</th>
+                                <th class="p-3 text-right">Amount ($)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fullTxnTableBody" class="divide-y divide-darkborder text-slate-300">
+                            <!-- Injected -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. PAYMENTS & STATEMENTS VIEW -->
+        <section id="view-payments" class="tab-view hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Payment Form Box -->
+                <div class="glass-panel p-6 rounded-2xl border border-darkborder space-y-5">
+                    <h3 class="font-bold text-lg text-white">Make Online Bill Payment</h3>
+                    
+                    <div class="p-4 bg-brand-900/30 border border-brand-500/20 rounded-xl space-y-2">
+                        <div class="flex justify-between text-xs text-slate-300">
+                            <span>Current Statement Balance:</span>
+                            <span class="font-bold text-white">$1,450.00</span>
+                        </div>
+                        <div class="flex justify-between text-xs text-slate-300">
+                            <span>Minimum Payment Due (5%):</span>
+                            <span class="font-bold text-amber-400">$145.00</span>
+                        </div>
+                        <div class="flex justify-between text-xs text-slate-300">
+                            <span>Due Date:</span>
+                            <span class="font-medium text-emerald-400">Oct 12, 2026</span>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3 text-xs">
+                        <label class="block text-slate-400 font-medium">Select Card to Pay For</label>
+                        <select id="paymentCardSelect" class="w-full bg-darkbg border border-darkborder rounded-xl p-2.5 text-white">
+                            <option value="1">Nexus Platinum (...4829) - $1,200 Due</option>
+                            <option value="2">Nexus Gold (...9102) - $250 Due</option>
+                        </select>
+
+                        <label class="block text-slate-400 font-medium">Amount Choice ($)</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button type="button" onclick="setPayAmount(145)" class="bg-darkbg hover:bg-slate-800 text-xs py-2 rounded-lg border border-darkborder text-slate-300 font-medium">Min ($145)</button>
+                            <button type="button" onclick="setPayAmount(725)" class="bg-darkbg hover:bg-slate-800 text-xs py-2 rounded-lg border border-darkborder text-slate-300 font-medium">50% ($725)</button>
+                            <button type="button" onclick="setPayAmount(1450)" class="bg-darkbg hover:bg-slate-800 text-xs py-2 rounded-lg border border-darkborder text-slate-300 font-medium">Full ($1450)</button>
+                        </div>
+                        <input type="number" id="customPayAmount" placeholder="Or enter custom amount" class="w-full bg-darkbg border border-darkborder rounded-xl p-2.5 text-white focus:border-brand-500 outline-none">
+
+                        <button onclick="processPaymentFromInput()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl text-xs transition shadow-lg shadow-emerald-600/20">
+                            <i class="fa-solid fa-lock mr-1"></i> Launch Payment Gateway &rarr;
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Statements & History -->
+                <div class="lg:col-span-2 glass-panel p-6 rounded-2xl border border-darkborder space-y-6">
+                    <div>
+                        <h3 class="font-bold text-lg text-white mb-1">Generated Statements & Cycle Records</h3>
+                        <p class="text-xs text-slate-400">DBMS stored monthly billing cycles</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="p-4 bg-darkbg/60 border border-darkborder rounded-xl flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-bold text-white">Statement - September 2026</p>
+                                <p class="text-[10px] text-slate-400">Aug 1 - Aug 31 • Outstanding: $1,450.00</p>
+                            </div>
+                            <button onclick="downloadStatement('Sep-2026')" class="text-xs bg-brand-600/20 hover:bg-brand-600/40 text-brand-300 border border-brand-500/30 px-3 py-1.5 rounded-lg transition">
+                                <i class="fa-solid fa-download mr-1"></i> PDF
+                            </button>
+                        </div>
+                        <div class="p-4 bg-darkbg/60 border border-darkborder rounded-xl flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-bold text-white">Statement - August 2026</p>
+                                <p class="text-[10px] text-slate-400">Jul 1 - Jul 31 • Outstanding: $980.00</p>
+                            </div>
+                            <button onclick="downloadStatement('Aug-2026')" class="text-xs bg-brand-600/20 hover:bg-brand-600/40 text-brand-300 border border-brand-500/30 px-3 py-1.5 rounded-lg transition">
+                                <i class="fa-solid fa-download mr-1"></i> PDF
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="font-semibold text-xs text-slate-300 mb-3">Payment Audit Log (`Payments` Table)</h4>
+                        <div class="overflow-x-auto rounded-xl border border-darkborder">
+                            <table class="w-full text-left text-xs">
+                                <thead class="bg-darkbg text-slate-400 border-b border-darkborder">
+                                    <tr>
+                                        <th class="p-2.5">PAY_ID (PK)</th>
+                                        <th class="p-2.5">Card ID</th>
+                                        <th class="p-2.5">Payment Date</th>
+                                        <th class="p-2.5">Method</th>
+                                        <th class="p-2.5 text-right">Amount Paid ($)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="paymentHistoryBody" class="divide-y divide-darkborder text-slate-300">
+                                    <!-- Dynamic -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 6. REWARDS & OFFERS VIEW -->
+        <section id="view-rewards" class="tab-view hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="glass-panel p-6 rounded-2xl border border-darkborder space-y-4">
+                    <div class="p-5 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-center">
+                        <i class="fa-solid fa-award text-4xl text-amber-400 mb-2"></i>
+                        <p class="text-xs text-amber-200 uppercase font-semibold">Reward Points Balance</p>
+                        <h2 class="text-3xl font-extrabold text-white my-1" id="rewardsPointDisplay">3,850 PTS</h2>
+                        <p class="text-xs text-slate-400">Equivalent to $38.50 Statement Credit</p>
+                    </div>
+
+                    <button onclick="redeemPointsForCredit()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl text-xs transition shadow-lg shadow-amber-500/20">
+                        <i class="fa-solid fa-coins mr-1"></i> Convert All Points to Cashback
+                    </button>
+                </div>
+
+                <div class="lg:col-span-2 glass-panel p-6 rounded-2xl border border-darkborder space-y-4">
+                    <h3 class="font-bold text-lg text-white">Cardholder Offers & Benefits</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" id="offersContainer">
+                        <!-- Injected dynamically -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 7. SECURITY & SUPPORT VIEW -->
+        <section id="view-security" class="tab-view hidden space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Security Settings -->
+                <div class="glass-panel p-6 rounded-2xl border border-darkborder space-y-4">
+                    <h3 class="font-bold text-lg text-white flex items-center gap-2">
+                        <i class="fa-solid fa-shield-halved text-brand-400"></i> Security & PIN Management
+                    </h3>
+
+                    <form onsubmit="handlePinChange(event)" class="space-y-3 text-xs">
+                        <div>
+                            <label class="block text-slate-400 mb-1">Select Card</label>
+                            <select id="pinCardSelect" class="w-full bg-darkbg border border-darkborder rounded-xl p-2.5 text-white">
+                                <option value="1">Nexus Platinum (...4829)</option>
+                                <option value="2">Nexus Gold (...9102)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-slate-400 mb-1">New 4-Digit PIN</label>
+                            <input type="password" maxlength="4" placeholder="****" required class="w-full bg-darkbg border border-darkborder rounded-xl p-2.5 text-white focus:border-brand-500 outline-none">
+                        </div>
+                        <button type="submit" class="bg-brand-600 hover:bg-brand-500 text-white font-bold py-2.5 px-4 rounded-xl transition">
+                            Update PIN Code
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Support Tickets -->
+                <div class="glass-panel p-6 rounded-2xl border border-darkborder space-y-4">
+                    <h3 class="font-bold text-lg text-white flex items-center gap-2">
+                        <i class="fa-solid fa-headset text-emerald-400"></i> Raise Customer Ticket
+                    </h3>
+
+                    <form onsubmit="handleSupportTicket(event)" class="space-y-3 text-xs">
+                        <div>
+                            <label class="block text-slate-400 mb-1">Issue Category</label>
+                            <select class="w-full bg-darkbg border border-darkborder rounded-xl p-2.5 text-white">
+                                <option>Dispute Charge</option>
+                                <option>Card Damage / Replacement</option>
+                                <option>Billing Discrepancy</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-slate-400 mb-1">Detailed Description</label>
+                            <textarea rows="3" placeholder="Explain your concern..." required class="w-full bg-darkbg border border-darkborder rounded-xl p-2.5 text-white focus:border-brand-500 outline-none"></textarea>
+                        </div>
+                        <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl transition">
+                            Submit Support Ticket
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- 8. ADMIN CONTROL PANEL VIEW -->
+        <section id="view-admin" class="tab-view hidden space-y-6">
+            <div class="p-5 bg-gradient-to-r from-amber-950/40 via-darkcard to-brand-950/40 border border-amber-500/30 rounded-2xl flex items-center justify-between flex-wrap gap-3">
+                <div>
+                    <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-user-shield text-amber-400"></i> Administrative Control Center
+                    </h2>
+                    <p class="text-xs text-slate-400">Approve limit requests, inspect users, and manage system overrides.</p>
+                </div>
+                <span class="px-3 py-1 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-full text-xs font-mono font-bold">
+                    ADMIN MODE PRIVILEGES
+                </span>
+            </div>
+
+            <!-- Pending Approvals -->
+            <div class="glass-panel p-6 rounded-2xl border border-darkborder space-y-4">
+                <h3 class="font-bold text-base text-white">Credit Limit Increase Approval Queue (`LimitRequests` Table)</h3>
+                <div class="overflow-x-auto rounded-xl border border-darkborder">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-darkbg text-slate-400 border-b border-darkborder">
+                            <tr>
+                                <th class="p-3">REQ_ID</th>
+                                <th class="p-3">Card ID</th>
+                                <th class="p-3">Requested Limit</th>
+                                <th class="p-3">Reason</th>
+                                <th class="p-3">Status</th>
+                                <th class="p-3 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminLimitRequestsBody" class="divide-y divide-darkborder text-slate-300">
+                            <!-- Injected -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- System Users Table -->
+            <div class="glass-panel p-6 rounded-2xl border border-darkborder space-y-4">
+                <h3 class="font-bold text-base text-white">Registered System Users (`Users` Table)</h3>
+                <div class="overflow-x-auto rounded-xl border border-darkborder">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-darkbg text-slate-400 border-b border-darkborder">
+                            <tr>
+                                <th class="p-3">USER_ID (PK)</th>
+                                <th class="p-3">Full Name</th>
+                                <th class="p-3">Email</th>
+                                <th class="p-3">Role</th>
+                                <th class="p-3">Registered Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminUsersBody" class="divide-y divide-darkborder text-slate-300">
+                            <!-- Injected -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 9. LIVE DBMS INSPECTOR VIEW (PBL CORE) -->
+        <section id="view-dbviewer" class="tab-view hidden space-y-6">
+            <div class="p-5 bg-amber-950/30 border border-amber-500/40 rounded-2xl space-y-2">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <h2 class="text-2xl font-bold text-amber-400 flex items-center gap-2">
+                        <i class="fa-solid fa-database"></i> Live DBMS Table Inspector
+                    </h2>
+                    <span class="text-xs font-mono bg-amber-500/20 text-amber-300 px-3 py-1 rounded-full border border-amber-500/40 font-bold">
+                        Faculty Presentation Tool
+                    </span>
+                </div>
+                <p class="text-xs text-slate-300">
+                    This live engine displays normalized relational tables in memory. Perform actions anywhere in the application (such as simulating purchases or making payments) and return here to show faculty real-time database mutations!
+                </p>
+            </div>
+
+            <!-- SQL Console Simulator -->
+            <div class="glass-panel p-6 rounded-2xl border border-darkborder space-y-4">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-bold text-sm text-slate-200 font-mono flex items-center gap-2">
+                        <i class="fa-solid fa-terminal text-emerald-400"></i> SQL Console Query Simulator
+                    </h3>
+                    <span class="text-[10px] text-slate-400">Test real SQL queries against in-memory state</span>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <input type="text" id="sqlConsoleInput" value="SELECT * FROM CreditCards WHERE status = 'ACTIVE';" class="flex-1 bg-black border border-slate-800 rounded-xl px-4 py-2.5 text-xs font-mono text-emerald-400 focus:outline-none focus:border-emerald-500">
+                    <button onclick="executeSimulatedSQL()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs px-5 py-2.5 rounded-xl transition font-bold">
+                        Run Query
+                    </button>
+                </div>
+                <div id="sqlResultBox" class="hidden p-4 bg-black/90 rounded-xl border border-slate-800 font-mono text-xs text-slate-300 overflow-x-auto">
+                    <!-- Dynamic Output -->
+                </div>
+            </div>
+
+            <!-- Selector Tabs -->
+            <div class="flex items-center gap-2 overflow-x-auto pb-2" id="dbTableSelectorTabs">
+                <button onclick="inspectTable('CreditCards')" id="dbtab-CreditCards" class="px-4 py-2 rounded-xl text-xs font-bold font-mono transition bg-amber-500 text-slate-950">
+                    CreditCards
+                </button>
+                <button onclick="inspectTable('Transactions')" id="dbtab-Transactions" class="px-4 py-2 rounded-xl text-xs font-bold font-mono transition bg-darkbg text-slate-400 hover:text-white">
+                    Transactions
+                </button>
+                <button onclick="inspectTable('Users')" id="dbtab-Users" class="px-4 py-2 rounded-xl text-xs font-bold font-mono transition bg-darkbg text-slate-400 hover:text-white">
+                    Users
+                </button>
+                <button onclick="inspectTable('Payments')" id="dbtab-Payments" class="px-4 py-2 rounded-xl text-xs font-bold font-mono transition bg-darkbg text-slate-400 hover:text-white">
+                    Payments
+                </button>
+                <button onclick="inspectTable('LimitRequests')" id="dbtab-LimitRequests" class="px-4 py-2 rounded-xl text-xs font-bold font-mono transition bg-darkbg text-slate-400 hover:text-white">
+                    LimitRequests
+                </button>
+            </div>
+
+            <!-- Table Data View -->
+            <div class="glass-panel p-6 rounded-2xl border border-darkborder space-y-4">
+                <div class="flex justify-between items-center flex-wrap gap-2">
+                    <div>
+                        <h3 class="font-bold text-base font-mono text-amber-400" id="currentTableTitle">TABLE: CreditCards</h3>
+                        <p class="text-xs text-slate-400" id="currentTableMeta">Primary Key: card_id | Foreign Key: user_id &rarr; Users(user_id)</p>
+                    </div>
+                    <span class="text-xs text-slate-500 font-mono" id="currentTableRowCount">Total Records: 2</span>
+                </div>
+
+                <div class="overflow-x-auto rounded-xl border border-darkborder">
+                    <table class="w-full text-left text-xs font-mono">
+                        <thead id="dbInspectorHead" class="bg-darkbg text-amber-300 border-b border-darkborder">
+                            <!-- Dynamic Head -->
+                        </thead>
+                        <tbody id="dbInspectorBody" class="divide-y divide-darkborder text-slate-300">
+                            <!-- Dynamic Body -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- MODALS & DIALOGS -->
+
+    <!-- Payment Gateway Simulated Modal -->
+    <div id="paymentGatewayModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel max-w-md w-full p-6 rounded-2xl border border-emerald-500/30 space-y-5">
+            <div class="flex justify-between items-center border-b border-darkborder pb-3">
+                <h3 class="font-bold text-lg text-white flex items-center gap-2">
+                    <i class="fa-solid fa-shield-halved text-emerald-400"></i> Gateway Verification
+                </h3>
+                <button onclick="closePaymentModal()" class="text-slate-400 hover:text-white text-lg">&times;</button>
+            </div>
+
+            <div class="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex justify-between items-center">
+                <span class="text-xs text-emerald-300">Amount to Pay:</span>
+                <span class="text-xl font-bold font-mono text-emerald-400" id="modalPayAmount">$0.00</span>
+            </div>
+
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-400 mb-1">Source Account</label>
+                    <select class="w-full bg-darkbg border border-darkborder rounded-xl p-2.5 text-white">
+                        <option>Connected HDFC Bank (**** 7712)</option>
+                        <option>Debit Card (**** 9011)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">2FA Security OTP Code</label>
+                    <input type="text" value="849201" readonly class="w-full bg-darkbg border border-darkborder rounded-xl p-2.5 font-mono text-center tracking-widest text-brand-400 font-bold">
+                </div>
+            </div>
+
+            <div class="flex gap-3 pt-2">
+                <button onclick="closePaymentModal()" class="flex-1 bg-slate-800 text-slate-300 py-2.5 rounded-xl text-xs font-medium">Cancel</button>
+                <button onclick="confirmPaymentExecution()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs shadow-lg shadow-emerald-600/30">
+                    Confirm Payment
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Issue New Card Modal -->
+    <div id="addCardModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel max-w-md w-full p-6 rounded-2xl border border-brand-500/30 space-y-4">
+            <div class="flex justify-between items-center border-b border-darkborder pb-3">
+                <h3 class="font-bold text-lg text-white">Request New Credit Card</h3>
+                <button onclick="closeAddCardModal()" class="text-slate-400 hover:text-white text-lg">&times;</button>
+            </div>
+
+            <form onsubmit="handleAddNewCardSubmit(event)" class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-400 mb-1">Card Tier</label>
+                    <select id="newCardTypeSelect" class="w-full bg-darkbg border border-darkborder rounded-xl p-2.5 text-white">
+                        <option value="Nexus Signature Visa">Nexus Signature Visa ($15,000 Limit)</option>
+                        <option value="Nexus Titanium Mastercard">Nexus Titanium Mastercard ($8,000 Limit)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">Cardholder Name</label>
+                    <input type="text" id="newCardHolderName" value="Alexander R. Vance" required class="w-full bg-darkbg border border-darkborder rounded-xl p-2.5 text-white">
+                </div>
+                <div class="flex gap-3 pt-3">
+                    <button type="button" onclick="closeAddCardModal()" class="flex-1 bg-slate-800 text-slate-300 py-2.5 rounded-xl">Cancel</button>
+                    <button type="submit" class="flex-1 bg-brand-600 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-brand-600/30">Issue Card (INSERT)</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- New Txn Simulation Modal -->
+    <div id="newTxnModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel max-w-md w-full p-6 rounded-2xl border border-brand-500/30 space-y-4">
+            <div class="flex justify-between items-center border-b border-darkborder pb-3">
+                <h3 class="font-bold text-lg text-white">Simulate Purchase Transaction</h3>
+                <button onclick="closeNewTxnModal()" class="text-slate-400 hover:text-white text-lg">&times;</button>
+            </div>
+
+            <form onsubmit="handleSimulateTxnSubmit(event)" class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-400 mb-1">Select Credit Card</label>
+                    <select id="simTxnCardSelect" class="w-full bg-darkbg border border-darkborder rounded-xl p-2.5 text-white">
+                        <option value="1">Nexus Platinum (...4829)</option>
+                        <option value="2">Nexus Gold (...9102)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">Merchant</label>
+                    <input type="text" id="simMerchantInput" placeholder="e.g. Amazon, Starbucks, Apple Store" required class="w-full bg-darkbg border border-darkborder rounded-xl p-2.5 text-white">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-slate-400 mb-1">Amount ($)</label>
+                        <input type="number" step="0.01" id="simAmountInput" placeholder="0.00" required class="w-full bg-darkbg border border-darkborder rounded-xl p-2.5 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1">Category</label>
+                        <select id="simCategorySelect" class="w-full bg-darkbg border border-darkborder rounded-xl p-2.5 text-white">
+                            <option value="Dining">Dining</option>
+                            <option value="Electronics">Electronics</option>
+                            <option value="Groceries">Groceries</option>
+                            <option value="Travel">Travel</option>
+                            <option value="Utilities">Utilities</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex gap-3 pt-3">
+                    <button type="button" onclick="closeNewTxnModal()" class="flex-1 bg-slate-800 text-slate-300 py-2.5 rounded-xl">Cancel</button>
+                    <button type="submit" class="flex-1 bg-emerald-600 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-emerald-600/30">Execute Purchase</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Password Reset Flow Modal -->
+    <div id="passwordResetModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel max-w-sm w-full p-6 rounded-2xl border border-darkborder space-y-4">
+            <h3 class="font-bold text-base text-white">Reset Password</h3>
+            <p class="text-xs text-slate-400">Enter email to receive simulated password reset token.</p>
+            <input type="email" id="resetEmailInput" placeholder="your@email.com" class="w-full bg-darkbg border border-darkborder rounded-xl p-2.5 text-xs text-white">
+            <div class="flex gap-2">
+                <button onclick="closePasswordResetModal()" class="flex-1 bg-slate-800 text-slate-300 py-2 rounded-xl text-xs">Cancel</button>
+                <button onclick="executePasswordReset()" class="flex-1 bg-brand-600 text-white font-bold py-2 rounded-xl text-xs">Send Token</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Relational In-Memory Database Engine
+        const db = {
+            Users: [
+                { user_id: 1, full_name: "Alexander R. Vance", email: "alex.vance@nexus.com", role: "USER", created_at: "2026-01-15" },
+                { user_id: 2, full_name: "System Admin", email: "admin@nexus.com", role: "ADMIN", created_at: "2026-01-01" }
+            ],
+            CreditCards: [
+                { card_id: 1, user_id: 1, card_number: "4532 **** **** 4829", card_type: "Nexus Platinum Visa", credit_limit: 8000.00, used_credit: 1200.00, status: "ACTIVE", exp_date: "08/28", pin: "1234" },
+                { card_id: 2, user_id: 1, card_number: "5412 **** **** 9102", card_type: "Nexus Gold Mastercard", credit_limit: 2000.00, used_credit: 250.00, status: "ACTIVE", exp_date: "11/29", pin: "4321" }
+            ],
+            Transactions: [
+                { txn_id: 101, card_id: 1, merchant_name: "Apple Store Infinite", amount: 540.00, category: "Electronics", risk_flag: false, txn_date: "2026-09-18 14:22" },
+                { txn_id: 102, card_id: 1, merchant_name: "Le Petit Bistro", amount: 112.50, category: "Dining", risk_flag: false, txn_date: "2026-09-19 20:10" },
+                { txn_id: 103, card_id: 2, merchant_name: "Whole Foods Market", amount: 85.00, category: "Groceries", risk_flag: false, txn_date: "2026-09-20 09:15" },
+                { txn_id: 104, card_id: 1, merchant_name: "Foreign FX Online", amount: 542.50, category: "Travel", risk_flag: true, txn_date: "2026-09-20 11:45" }
+            ],
+            Payments: [
+                { pay_id: 501, card_id: 1, amount: 200.00, pay_method: "HDFC Netbanking", pay_date: "2026-09-01" },
+                { pay_id: 502, card_id: 2, amount: 100.00, pay_method: "Debit Card", pay_date: "2026-09-05" }
+            ],
+            LimitRequests: [
+                { req_id: 801, card_id: 1, requested_limit: 12000.00, reason: "Income promotion", status: "PENDING" }
+            ],
+            Rewards: { points: 3850, cashback_balance: 38.50 }
+        };
+
+        let currentUser = null;
+        let activeTab = "dashboard";
+        let activeInspectedTable = "CreditCards";
+        let expenseChartInstance = null;
+        let pendingPayAmount = 0;
+
+        window.onload = function() {
+            initCharts();
+            // Start in Auth Mode
+            switchAuthMode('USER_LOGIN');
+        };
+
+        // Toast Notification System
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            const bgColor = type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-red-600' : 'bg-brand-600';
+            toast.className = `${bgColor} text-white text-xs px-4 py-3 rounded-xl shadow-xl flex items-center justify-between gap-3 pointer-events-auto transition-all transform translate-y-2 opacity-0`;
+            toast.innerHTML = `<span>${message}</span><button onclick="this.parentElement.remove()" class="text-white opacity-70 hover:opacity-100">&times;</button>`;
+            
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                if (toast) toast.remove();
+            }, 4000);
+        }
+
+        // Authentication Controller
+        function switchAuthMode(mode) {
+            const userForm = document.getElementById('formUserLogin');
+            const adminForm = document.getElementById('formAdminLogin');
+            const regForm = document.getElementById('formRegister');
+
+            const tabUser = document.getElementById('authTabUser');
+            const tabAdmin = document.getElementById('authTabAdmin');
+            const tabReg = document.getElementById('authTabRegister');
+
+            [tabUser, tabAdmin, tabReg].forEach(t => t.className = "py-2 rounded-lg transition text-slate-400 hover:text-white");
+
+            userForm.classList.add('hidden');
+            adminForm.classList.add('hidden');
+            regForm.classList.add('hidden');
+
+            if (mode === 'ADMIN_LOGIN') {
+                adminForm.classList.remove('hidden');
+                tabAdmin.className = "py-2 rounded-lg transition text-slate-950 font-bold bg-amber-500 shadow";
+            } else if (mode === 'REGISTER') {
+                regForm.classList.remove('hidden');
+                tabReg.className = "py-2 rounded-lg transition text-white font-bold bg-emerald-600 shadow";
+            } else {
+                userForm.classList.remove('hidden');
+                tabUser.className = "py-2 rounded-lg transition text-white font-bold bg-brand-600 shadow";
+            }
+        }
+
+        function handleAuthSubmit(e, mode) {
+            e.preventDefault();
+            if (mode === 'USER_LOGIN') {
+                const email = document.getElementById('loginUserEmail').value;
+                const found = db.Users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.role === 'USER');
+                if (found) {
+                    loginUser(found);
+                } else {
+                    showToast('Invalid User Credentials!', 'error');
+                }
+            } else if (mode === 'ADMIN_LOGIN') {
+                const email = document.getElementById('loginAdminEmail').value;
+                const found = db.Users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.role === 'ADMIN');
+                if (found) {
+                    loginUser(found);
+                } else {
+                    showToast('Invalid Admin Credentials!', 'error');
+                }
+            } else if (mode === 'REGISTER') {
+                const name = document.getElementById('regFullName').value;
+                const email = document.getElementById('regEmail').value;
+                
+                const newUser = {
+                    user_id: db.Users.length + 1,
+                    full_name: name,
+                    email: email,
+                    role: 'USER',
+                    created_at: new Date().toISOString().split('T')[0]
+                };
+                db.Users.push(newUser);
+                showToast('Registration Successful! Please login.', 'success');
+                switchAuthMode('USER_LOGIN');
+            }
+        }
+
+        function loginUser(user) {
+            currentUser = user;
+            document.getElementById('view-auth').classList.add('hidden');
+            document.getElementById('mainHeader').classList.remove('hidden');
+            document.getElementById('mainNav').classList.remove('hidden');
+
+            document.getElementById('headerUserName').innerText = user.full_name;
+            document.getElementById('headerUserRole').innerText = `ROLE: ${user.role}`;
+            document.getElementById('headerUserAvatar').innerText = user.full_name.charAt(0);
+
+            setupNavTabs(user.role);
+
+            if (user.role === 'ADMIN') {
+                switchTab('admin');
+            } else {
+                switchTab('dashboard');
+            }
+            showToast(`Welcome back, ${user.full_name}!`, 'success');
+        }
+
+        function logout() {
+            currentUser = null;
+            document.getElementById('mainHeader').classList.add('hidden');
+            document.getElementById('mainNav').classList.add('hidden');
+            document.querySelectorAll('.tab-view').forEach(v => v.classList.add('hidden'));
+            document.getElementById('view-auth').classList.remove('hidden');
+            switchAuthMode('USER_LOGIN');
+            showToast('Logged out successfully');
+        }
+
+        function guestQuickInspect() {
+            currentUser = db.Users[0];
+            document.getElementById('view-auth').classList.add('hidden');
+            document.getElementById('mainHeader').classList.remove('hidden');
+            document.getElementById('mainNav').classList.remove('hidden');
+            setupNavTabs('ADMIN');
+            switchTab('dbviewer');
+        }
+
+        function setupNavTabs(role) {
+            const nav = document.getElementById('navTabsContainer');
+            if (role === 'ADMIN') {
+                nav.innerHTML = `
+                    <button onclick="switchTab('admin')" id="tab-admin" class="tab-btn px-4 py-2 rounded-lg whitespace-nowrap transition text-brand-400 bg-brand-500/10 border border-brand-500/20 font-bold">
+                        <i class="fa-solid fa-user-shield"></i> Admin Control Center
+                    </button>
+                    <button onclick="switchTab('transactions')" id="tab-transactions" class="tab-btn px-4 py-2 rounded-lg whitespace-nowrap transition text-slate-400 hover:bg-slate-800">
+                        <i class="fa-solid fa-list"></i> All Transactions
+                    </button>
+                    <button onclick="switchTab('dbviewer')" id="tab-dbviewer" class="tab-btn px-4 py-2 rounded-lg font-bold whitespace-nowrap transition text-amber-400 bg-amber-500/10 border border-amber-500/30 ml-auto">
+                        <i class="fa-solid fa-database"></i> Live DBMS Inspector
+                    </button>
+                `;
+            } else {
+                nav.innerHTML = `
+                    <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn px-4 py-2 rounded-lg font-bold whitespace-nowrap transition text-brand-400 bg-brand-500/10 border border-brand-500/20">
+                        <i class="fa-solid fa-chart-pie"></i> Dashboard
+                    </button>
+                    <button onclick="switchTab('cards')" id="tab-cards" class="tab-btn px-4 py-2 rounded-lg font-medium whitespace-nowrap transition text-slate-400 hover:bg-slate-800">
+                        <i class="fa-solid fa-credit-card"></i> Cards
+                    </button>
+                    <button onclick="switchTab('transactions')" id="tab-transactions" class="tab-btn px-4 py-2 rounded-lg font-medium whitespace-nowrap transition text-slate-400 hover:bg-slate-800">
+                        <i class="fa-solid fa-list-check"></i> Transactions
+                    </button>
+                    <button onclick="switchTab('payments')" id="tab-payments" class="tab-btn px-4 py-2 rounded-lg font-medium whitespace-nowrap transition text-slate-400 hover:bg-slate-800">
+                        <i class="fa-solid fa-file-invoice-dollar"></i> Payments & Bills
+                    </button>
+                    <button onclick="switchTab('rewards')" id="tab-rewards" class="tab-btn px-4 py-2 rounded-lg font-medium whitespace-nowrap transition text-slate-400 hover:bg-slate-800">
+                        <i class="fa-solid fa-gift"></i> Rewards
+                    </button>
+                    <button onclick="switchTab('security')" id="tab-security" class="tab-btn px-4 py-2 rounded-lg font-medium whitespace-nowrap transition text-slate-400 hover:bg-slate-800">
+                        <i class="fa-solid fa-shield-halved"></i> Security & Support
+                    </button>
+                    <button onclick="switchTab('dbviewer')" id="tab-dbviewer" class="tab-btn px-4 py-2 rounded-lg font-bold whitespace-nowrap transition text-amber-400 bg-amber-500/10 border border-amber-500/30 ml-auto">
+                        <i class="fa-solid fa-database"></i> Live DBMS Inspector
+                    </button>
+                `;
+            }
+        }
+
+        // Navigation Controller
+        function switchTab(tabId) {
+            activeTab = tabId;
+            document.querySelectorAll('.tab-view').forEach(view => view.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-brand-500/10', 'text-brand-400', 'border', 'border-brand-500/20');
+                btn.classList.add('text-slate-400');
+            });
+
+            const currentView = document.getElementById(`view-${tabId}`);
+            if (currentView) currentView.classList.remove('hidden');
+
+            const currentBtn = document.getElementById(`tab-${tabId}`);
+            if (currentBtn && tabId !== 'dbviewer') {
+                currentBtn.classList.add('bg-brand-500/10', 'text-brand-400', 'border', 'border-brand-500/20');
+                currentBtn.classList.remove('text-slate-400');
+            }
+
+            renderAllViews();
+        }
+
+        function renderAllViews() {
+            let totalLimit = db.CreditCards.reduce((acc, c) => acc + c.credit_limit, 0);
+            let totalUsed = db.CreditCards.reduce((acc, c) => acc + c.used_credit, 0);
+            let available = totalLimit - totalUsed;
+
+            document.getElementById('dashTotalOutstanding').innerText = `$${totalUsed.toFixed(2)}`;
+            document.getElementById('dashAvailableCredit').innerText = `$${available.toFixed(2)}`;
+            document.getElementById('dashTotalLimit').innerText = `$${totalLimit.toFixed(2)}`;
+            document.getElementById('dashRewardPoints').innerText = `${db.Rewards.points.toLocaleString()} PTS`;
+            document.getElementById('rewardsPointDisplay').innerText = `${db.Rewards.points.toLocaleString()} PTS`;
+
+            let utilPct = ((totalUsed / totalLimit) * 100).toFixed(1);
+            document.getElementById('dashUtilBar').style.width = `${utilPct}%`;
+
+            renderDashboardTransactions();
+            renderCardsList();
+            renderTransactionsTable();
+            renderPaymentHistory();
+            renderOffers();
+            renderAdminPanel();
+            inspectTable(activeInspectedTable);
+            updateChartData();
+        }
+
+        // Dashboard Txn Preview
+        function renderDashboardTransactions() {
+            const tbody = document.getElementById('dashTxnTable');
+            tbody.innerHTML = db.Transactions.slice(-4).reverse().map(t => `
+                <tr class="hover:bg-slate-800/50">
+                    <td class="p-3 font-mono text-brand-400">#TXN-${t.txn_id}</td>
+                    <td class="p-3">${t.txn_date}</td>
+                    <td class="p-3 font-medium text-white">${t.merchant_name}</td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded bg-slate-800 border border-slate-700">${t.category}</span></td>
+                    <td class="p-3">${t.risk_flag ? '<span class="text-amber-400 font-semibold"><i class="fa-solid fa-flag"></i> Flagged</span>' : '<span class="text-emerald-400"><i class="fa-solid fa-check"></i> Clean</span>'}</td>
+                    <td class="p-3 text-right font-bold text-white">$${t.amount.toFixed(2)}</td>
+                </tr>
+            `).join('');
+        }
+
+        function renderCardsList() {
+            const container = document.getElementById('cardsListContainer');
+            const selectCard = document.getElementById('limitCardSelect');
+            if (selectCard) {
+                selectCard.innerHTML = db.CreditCards.map(c => `<option value="${c.card_id}">${c.card_type} (...${c.card_number.slice(-4)})</option>`).join('');
+            }
+
+            container.innerHTML = db.CreditCards.map(c => `
+                <div class="glass-panel p-5 rounded-2xl border border-darkborder space-y-4">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-bold text-brand-400 font-mono">${c.card_type}</span>
+                        <span class="px-2 py-0.5 text-[10px] font-bold rounded-full ${c.status === 'ACTIVE' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}">${c.status}</span>
+                    </div>
+                    <div class="font-mono text-lg tracking-widest text-white">${c.card_number}</div>
+                    <div class="grid grid-cols-2 gap-2 text-xs pt-1">
+                        <div>
+                            <p class="text-slate-400">Used Credit</p>
+                            <p class="font-bold text-amber-400">$${c.used_credit.toFixed(2)}</p>
+                        </div>
+                        <div>
+                            <p class="text-slate-400">Limit</p>
+                            <p class="font-bold text-white">$${c.credit_limit.toFixed(2)}</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 pt-2">
+                        <button onclick="toggleCardStatus(${c.card_id})" class="flex-1 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 py-2 rounded-xl transition">
+                            ${c.status === 'ACTIVE' ? '<i class="fa-solid fa-lock mr-1"></i> Freeze Card' : '<i class="fa-solid fa-key mr-1"></i> Unfreeze'}
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function toggleCardStatus(cardId) {
+            const card = db.CreditCards.find(c => c.card_id === cardId);
+            if (card) {
+                card.status = card.status === 'ACTIVE' ? 'BLOCKED' : 'ACTIVE';
+                renderAllViews();
+                showToast(`Card ${card.card_number.slice(-4)} status updated in DBMS!`, 'info');
+            }
+        }
+
+        function renderTransactionsTable() {
+            const search = document.getElementById('txnSearchInput')?.value.toLowerCase() || '';
+            const category = document.getElementById('txnCategoryFilter')?.value || 'ALL';
+            const cardFilter = document.getElementById('txnCardFilter')?.value || 'ALL';
+
+            let filtered = db.Transactions.filter(t => {
+                const matchSearch = t.merchant_name.toLowerCase().includes(search);
+                const matchCat = category === 'ALL' || t.category === category;
+                const matchCard = cardFilter === 'ALL' || t.card_id.toString() === cardFilter;
+                return matchSearch && matchCat && matchCard;
+            });
+
+            const tbody = document.getElementById('fullTxnTableBody');
+            tbody.innerHTML = filtered.slice().reverse().map(t => `
+                <tr class="hover:bg-slate-800/40">
+                    <td class="p-3 font-mono text-brand-400">#TXN-${t.txn_id}</td>
+                    <td class="p-3 font-mono text-slate-400">CARD-#${t.card_id}</td>
+                    <td class="p-3 text-slate-400">${t.txn_date}</td>
+                    <td class="p-3 font-medium text-white">${t.merchant_name}</td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded bg-slate-800 border border-slate-700">${t.category}</span></td>
+                    <td class="p-3">${t.risk_flag ? '<span class="text-amber-400 font-semibold"><i class="fa-solid fa-exclamation-circle"></i> Flagged</span>' : '<span class="text-emerald-400">Normal</span>'}</td>
+                    <td class="p-3 text-right font-bold text-white">$${t.amount.toFixed(2)}</td>
+                </tr>
+            `).join('');
+        }
+
+        function renderPaymentHistory() {
+            const tbody = document.getElementById('paymentHistoryBody');
+            tbody.innerHTML = db.Payments.slice().reverse().map(p => `
+                <tr>
+                    <td class="p-2.5 font-mono text-brand-400">#PAY-${p.pay_id}</td>
+                    <td class="p-2.5 font-mono text-slate-400">CARD-#${p.card_id}</td>
+                    <td class="p-2.5 text-slate-400">${p.pay_date}</td>
+                    <td class="p-2.5">${p.pay_method}</td>
+                    <td class="p-2.5 text-right font-bold text-emerald-400">$${p.amount.toFixed(2)}</td>
+                </tr>
+            `).join('');
+        }
+
+        function openPaymentGateway(amount) {
+            pendingPayAmount = amount;
+            document.getElementById('modalPayAmount').innerText = `$${amount.toFixed(2)}`;
+            document.getElementById('paymentGatewayModal').classList.remove('hidden');
+        }
+
+        function closePaymentModal() {
+            document.getElementById('paymentGatewayModal').classList.add('hidden');
+        }
+
+        function setPayAmount(amt) {
+            document.getElementById('customPayAmount').value = amt;
+        }
+
+        function processPaymentFromInput() {
+            const val = parseFloat(document.getElementById('customPayAmount').value);
+            if (val && val > 0) {
+                openPaymentGateway(val);
+            } else {
+                showToast('Please enter a valid payment amount!', 'error');
+            }
+        }
+
+        function confirmPaymentExecution() {
+            const cardId = parseInt(document.getElementById('paymentCardSelect').value) || 1;
+            const card = db.CreditCards.find(c => c.card_id === cardId);
+
+            if (card) {
+                card.used_credit = Math.max(0, card.used_credit - pendingPayAmount);
+                db.Payments.push({
+                    pay_id: 500 + db.Payments.length + 1,
+                    card_id: cardId,
+                    amount: pendingPayAmount,
+                    pay_method: "Simulated Gateway",
+                    pay_date: new Date().toISOString().split('T')[0]
+                });
+                closePaymentModal();
+                renderAllViews();
+                showToast(`Payment of $${pendingPayAmount} logged in DBMS!`, 'success');
+            }
+        }
+
+        function handleLimitRequest(e) {
+            e.preventDefault();
+            const cardId = parseInt(document.getElementById('limitCardSelect').value);
+            const reqLimit = parseFloat(document.getElementById('requestedLimitInput').value);
+            const reason = document.getElementById('limitReasonInput').value;
+
+            db.LimitRequests.push({
+                req_id: 800 + db.LimitRequests.length + 1,
+                card_id: cardId,
+                requested_limit: reqLimit,
+                reason: reason,
+                status: "PENDING"
+            });
+
+            renderAllViews();
+            showToast('Credit Limit Request added to Admin Queue!', 'success');
+        }
+
+        function renderAdminPanel() {
+            const limitBody = document.getElementById('adminLimitRequestsBody');
+            limitBody.innerHTML = db.LimitRequests.map(r => `
+                <tr>
+                    <td class="p-3 font-mono text-brand-400">#REQ-${r.req_id}</td>
+                    <td class="p-3 font-mono">CARD-#${r.card_id}</td>
+                    <td class="p-3 font-bold text-white">$${r.requested_limit.toFixed(2)}</td>
+                    <td class="p-3 text-slate-400">${r.reason}</td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${r.status === 'PENDING' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : r.status === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}">${r.status}</span></td>
+                    <td class="p-3 text-right space-x-1">
+                        ${r.status === 'PENDING' ? `
+                            <button onclick="approveLimitRequest(${r.req_id})" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold">Approve</button>
+                            <button onclick="rejectLimitRequest(${r.req_id})" class="px-2.5 py-1 bg-red-600 hover:bg-red-500 text-white rounded text-[10px] font-bold">Reject</button>
+                        ` : '<span class="text-slate-500">Processed</span>'}
+                    </td>
+                </tr>
+            `).join('');
+
+            const usersBody = document.getElementById('adminUsersBody');
+            usersBody.innerHTML = db.Users.map(u => `
+                <tr>
+                    <td class="p-3 font-mono text-brand-400">#USR-${u.user_id}</td>
+                    <td class="p-3 font-medium text-white">${u.full_name}</td>
+                    <td class="p-3 text-slate-400">${u.email}</td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-brand-300 font-mono">${u.role}</span></td>
+                    <td class="p-3 text-slate-400">${u.created_at}</td>
+                </tr>
+            `).join('');
+        }
+
+        function approveLimitRequest(reqId) {
+            const req = db.LimitRequests.find(r => r.req_id === reqId);
+            if (req) {
+                req.status = "APPROVED";
+                const card = db.CreditCards.find(c => c.card_id === req.card_id);
+                if (card) card.credit_limit = req.requested_limit;
+                renderAllViews();
+                showToast(`Limit Request #${reqId} Approved!`, 'success');
+            }
+        }
+
+        function rejectLimitRequest(reqId) {
+            const req = db.LimitRequests.find(r => r.req_id === reqId);
+            if (req) {
+                req.status = "REJECTED";
+                renderAllViews();
+                showToast(`Limit Request #${reqId} Rejected.`, 'info');
+            }
+        }
+
+        function renderOffers() {
+            const offers = [
+                { title: "5% Dining Cashback", desc: "Earn 5x reward points on all restaurant payments using Nexus Platinum.", code: "FOODGURU" },
+                { title: "Zero Foreign Exchange Fee", desc: "Waived international FX charges for flight bookings.", code: "GLOBETROT" }
+            ];
+            document.getElementById('offersContainer').innerHTML = offers.map(o => `
+                <div class="p-4 bg-darkbg/60 border border-darkborder rounded-xl space-y-2">
+                    <h4 class="font-bold text-xs text-brand-400">${o.title}</h4>
+                    <p class="text-xs text-slate-400">${o.desc}</p>
+                    <span class="inline-block text-[10px] font-mono bg-brand-500/20 text-brand-300 px-2 py-0.5 rounded border border-brand-500/30">
+                        Promo: ${o.code}
+                    </span>
+                </div>
+            `).join('');
+        }
+
+        function redeemPointsForCredit() {
+            if (db.Rewards.points >= 1000) {
+                const creditVal = (db.Rewards.points / 100).toFixed(2);
+                db.Rewards.points = 0;
+                const card = db.CreditCards[0];
+                card.used_credit = Math.max(0, card.used_credit - parseFloat(creditVal));
+                renderAllViews();
+                showToast(`Redeemed points for $${creditVal} credit!`, 'success');
+            } else {
+                showToast('Minimum 1,000 points required to redeem.', 'error');
+            }
+        }
+
+        function handlePinChange(e) {
+            e.preventDefault();
+            showToast('Card PIN updated in DBMS!', 'success');
+        }
+
+        function handleSupportTicket(e) {
+            e.preventDefault();
+            showToast('Support Ticket #TCK-9021 Logged!', 'success');
+        }
+
+        function showPasswordResetModal() { document.getElementById('passwordResetModal').classList.remove('hidden'); }
+        function closePasswordResetModal() { document.getElementById('passwordResetModal').classList.add('hidden'); }
+        function executePasswordReset() {
+            closePasswordResetModal();
+            showToast('Password reset link sent to email!', 'info');
+        }
+
+        function openAddCardModal() { document.getElementById('addCardModal').classList.remove('hidden'); }
+        function closeAddCardModal() { document.getElementById('addCardModal').classList.add('hidden'); }
+        function openNewTransactionModal() { openNewTxnModal(); }
+        function openNewTxnModal() { document.getElementById('newTxnModal').classList.remove('hidden'); }
+        function closeNewTxnModal() { document.getElementById('newTxnModal').classList.add('hidden'); }
+
+        function handleAddNewCardSubmit(e) {
+            e.preventDefault();
+            const type = document.getElementById('newCardTypeSelect').value;
+            const name = document.getElementById('newCardHolderName').value;
+            
+            db.CreditCards.push({
+                card_id: db.CreditCards.length + 1,
+                user_id: currentUser ? currentUser.user_id : 1,
+                card_number: `4000 **** **** ${Math.floor(1000 + Math.random() * 9000)}`,
+                card_type: type,
+                credit_limit: type.includes('Signature') ? 15000.00 : 8000.00,
+                used_credit: 0.00,
+                status: "ACTIVE",
+                exp_date: "09/31",
+                pin: "0000"
+            });
+            closeAddCardModal();
+            renderAllViews();
+            showToast('New card record INSERTED into DBMS!', 'success');
+        }
+
+        function handleSimulateTxnSubmit(e) {
+            e.preventDefault();
+            const cardId = parseInt(document.getElementById('simTxnCardSelect').value);
+            const merchant = document.getElementById('simMerchantInput').value;
+            const amt = parseFloat(document.getElementById('simAmountInput').value);
+            const cat = document.getElementById('simCategorySelect').value;
+
+            const card = db.CreditCards.find(c => c.card_id === cardId);
+            if (card) {
+                if (card.status !== 'ACTIVE') {
+                    showToast('Transaction Failed: Card is frozen/blocked!', 'error');
+                    return;
+                }
+                card.used_credit += amt;
+                db.Transactions.push({
+                    txn_id: 100 + db.Transactions.length + 1,
+                    card_id: cardId,
+                    merchant_name: merchant,
+                    amount: amt,
+                    category: cat,
+                    risk_flag: amt > 500,
+                    txn_date: new Date().toISOString().replace('T', ' ').substring(0, 16)
+                });
+                db.Rewards.points += Math.floor(amt * 2);
+                closeNewTxnModal();
+                renderAllViews();
+                showToast(`Txn $${amt} processed & points awarded!`, 'success');
+            }
+        }
+
+        function inspectTable(tableName) {
+            activeInspectedTable = tableName;
+            
+            document.querySelectorAll('#dbTableSelectorTabs button').forEach(b => {
+                b.className = "px-4 py-2 rounded-xl text-xs font-bold font-mono transition bg-darkbg text-slate-400 hover:text-white";
+            });
+            const activeBtn = document.getElementById(`dbtab-${tableName}`);
+            if (activeBtn) activeBtn.className = "px-4 py-2 rounded-xl text-xs font-bold font-mono transition bg-amber-500 text-slate-950";
+
+            document.getElementById('currentTableTitle').innerText = `TABLE: ${tableName}`;
+            
+            const rows = db[tableName] || [];
+            document.getElementById('currentTableRowCount').innerText = `Total Records: ${rows.length}`;
+
+            if (rows.length === 0) return;
+
+            const keys = Object.keys(rows[0]);
+            const thead = document.getElementById('dbInspectorHead');
+            const tbody = document.getElementById('dbInspectorBody');
+
+            thead.innerHTML = `<tr>${keys.map(k => `<th class="p-3">${k}</th>`).join('')}</tr>`;
+            tbody.innerHTML = rows.map(r => `
+                <tr class="hover:bg-slate-800/60">
+                    ${keys.map(k => `<td class="p-3 ${k.includes('id') ? 'text-amber-400 font-bold' : ''}">${typeof r[k] === 'object' ? JSON.stringify(r[k]) : r[k]}</td>`).join('')}
+                </tr>
+            `).join('');
+        }
+
+        function executeSimulatedSQL() {
+            const query = document.getElementById('sqlConsoleInput').value;
+            const resBox = document.getElementById('sqlResultBox');
+            resBox.classList.remove('hidden');
+
+            try {
+                if (query.toUpperCase().includes('SELECT * FROM CREDITCARDS')) {
+                    resBox.innerHTML = `<span class="text-emerald-400">Query Executed (2 rows returned):</span><br>` + JSON.stringify(db.CreditCards, null, 2);
+                } else if (query.toUpperCase().includes('SELECT * FROM TRANSACTIONS')) {
+                    resBox.innerHTML = `<span class="text-emerald-400">Query Executed (${db.Transactions.length} rows returned):</span><br>` + JSON.stringify(db.Transactions, null, 2);
+                } else {
+                    resBox.innerHTML = `<span class="text-amber-400">Result for Query: "${query}"</span><br>` + JSON.stringify({ status: "SUCCESS", affected_rows: 1, timestamp: new Date().toISOString() }, null, 2);
+                }
+            } catch (err) {
+                resBox.innerText = `SQL Syntax Error: ${err.message}`;
+            }
+        }
+
+        function initCharts() {
+            const ctx = document.getElementById('expenseChart').getContext('2d');
+            expenseChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Electronics', 'Dining', 'Groceries', 'Travel'],
+                    datasets: [{
+                        data: [540, 112.50, 85, 542.50],
+                        backgroundColor: ['#6366f1', '#ec4899', '#10b981', '#f59e0b'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 10 } } }
+                    }
+                }
+            });
+        }
+
+        function updateChartData() {
+            if (!expenseChartInstance) return;
+            const categories = {};
+            db.Transactions.forEach(t => {
+                categories[t.category] = (categories[t.category] || 0) + t.amount;
+            });
+
+            expenseChartInstance.data.labels = Object.keys(categories);
+            expenseChartInstance.data.datasets[0].data = Object.values(categories);
+            expenseChartInstance.update();
+        }
+
+        function downloadStatement(month) {
+            showToast(`Generating statement PDF for ${month}... Download complete!`, 'success');
+        }
+    </script>
+</body>
+</html>
